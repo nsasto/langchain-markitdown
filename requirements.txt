@@ -1,0 +1,3 @@
+markitdown[all]
+langchain_core
+langchain.text_splitters
