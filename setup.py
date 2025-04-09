@@ -1,12 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='markitdown_langchain',  # Changed to underscores
+    name='markitdown-langchain',
     version='0.1.0',
-    description='LangChain data loaders based on Markdown.',
+    description='LangChain data loaders based on Markdown by @untrueaxioms.',
     author='Nathan Sasto',
-    author_email='nathan@untrueaxioms.nomail',
-    packages=find_packages(where='src'),
+     packages=find_packages(where='src'),
     package_dir={'': 'src'},
     install_requires=[
         'markitdown[all]',  # Consider specifying a version
