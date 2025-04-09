@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 from langchain_core.documents import Document
-from src.markitdown_langchain.base_loader import BaseMarkitdownLoader
-from langchain.text_splitter import MarkdownHeaderTextSplitter
+from .base_loader import BaseMarkitdownLoader
+from langchain_text_splitters import MarkdownHeaderTextSplitter
 
 class DocxLoader(BaseMarkitdownLoader):
     def __init__(self, file_path: str, split_by_page: bool = False):

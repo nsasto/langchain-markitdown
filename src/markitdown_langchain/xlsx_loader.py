@@ -1,6 +1,6 @@
 from typing import List
 from langchain_core.documents import Document
-from src.markitdown_langchain.base_loader import BaseMarkitdownLoader
+from .base_loader import BaseMarkitdownLoader
 
 class XlsxLoader(BaseMarkitdownLoader):
     """Loader for XLSX files."""

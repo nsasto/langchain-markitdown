@@ -1,4 +1,4 @@
 markitdown[all]
 langchain_core
-langchain.text-splitters
+langchain-text-splitters
 langchain_openai  # Add this if using OpenAI models for PPTX captioning

@@ -1,10 +1,10 @@
 from typing import List, Dict, Any, Optional
 from langchain_core.documents import Document
-from src.markitdown_langchain.base_loader import BaseMarkitdownLoader
-from langchain.text_splitter import MarkdownHeaderTextSplitter
+from .base_loader import BaseMarkitdownLoader
+from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_core.language_models import BaseChatModel
 import re
-from src.markitdown_langchain.utils import get_image_caption  # Import the function
+from .utils import get_image_caption  # Import the function
 
 class PptxLoader(BaseMarkitdownLoader):
     def __init__(self, file_path: str, split_by_page: bool = False, llm: Optional[BaseChatModel] = None):
