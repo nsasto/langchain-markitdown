@@ -1,4 +1,4 @@
-from typing import BinaryIO, Optional
+from typing import BinaryIO, Optional, Tuple
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 import base64

@@ -19,23 +19,19 @@ class XlsxLoader(BaseMarkitdownLoader):
         converter = MarkItDown()
         markdown_content = converter.convert(self.file_path).text_content
         
-        documents = []
-        # Split Markdown content by sheet headers
-        sheet_contents = markdown_content.split("## ")
-        for sheet_content in sheet_contents[1:]:
-            lines = sheet_content.splitlines()
-            sheet_name = lines[0].strip()  # First line is the sheet name
-            table_content = '\n'.join(lines[1:])  # Remaining lines are the table
-            
-            metadata = {"source": self.file_path, "file_name": self._get_file_name(), "page_number": sheet_name}
-            doc = Document(page_content=table_content, metadata=metadata)
-            documents.append(doc)
+        if self.split_by_page:
+            documents = []
+            # Split Markdown content by sheet headers
+            sheet_contents = markdown_content.split("## ")
+            for sheet_content in sheet_contents[1:]:
+                lines = sheet_content.splitlines()
+                sheet_name = lines[0].strip()  # First line is the sheet name
+                table_content = '\n'.join(lines[1:])  # Remaining lines are the table
+                
+                metadata = {"source": self.file_path, "file_name": self._get_file_name(self.file_path), "page_number": sheet_name}
+                doc = Document(page_content=table_content, metadata=metadata)
+                documents.append(doc)
             return documents
         else:
-            metadata = {"source": self.file_path, "file_name": self._get_file_name()}
+            metadata = {"source": self.file_path, "file_name": self._get_file_name(self.file_path), "file_size": self._get_file_size(self.file_path)}
             return [Document(page_content=markdown_content, metadata=metadata)]
-
-    def _get_file_name(self) -> str:
-        """Extract the file name from the file path."""
-        import os
-        return os.path.basename(self.file_path)

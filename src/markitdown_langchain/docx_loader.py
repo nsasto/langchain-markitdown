@@ -9,7 +9,7 @@ class DocxLoader(BaseMarkitdownLoader):
         self.split_by_page = split_by_page
 
     def load(
-        self, 
+        self,
         headers_to_split_on: Optional[List[str]] = None
     ) -> List[Document]:
         """Load a DOCX file and convert it to Langchain documents, splitting by Markdown headers."""
@@ -20,8 +20,8 @@ class DocxLoader(BaseMarkitdownLoader):
 
             metadata: Dict[str, Any] = {
                 "source": self.file_path,
-                "file_name": self._get_file_name(),
-                "file_size": self._get_file_size(),
+                "file_name": self._get_file_name(self.file_path),
+                "file_size": self._get_file_size(self.file_path),
                 "conversion_success": True,
             }
 
@@ -46,11 +46,11 @@ class DocxLoader(BaseMarkitdownLoader):
                     for page_num, page_content in enumerate(result.pages, start=1):
                         page_metadata = metadata.copy()
                         page_metadata["page_number"] = page_num
-                        
+
                         # Split page content by headers
                         markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
                         page_splits = markdown_splitter.split_text(page_content)
-                        
+
                         # Add split documents with updated metadata
                         for split in page_splits:
                             split.metadata.update(page_metadata)  # Add page-level metadata
@@ -60,13 +60,13 @@ class DocxLoader(BaseMarkitdownLoader):
                     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
                     documents = markdown_splitter.split_text(result.text_content)
                     for doc in documents:
-                        doc.metadata.update(metadata) # Add document-level metadata
+                        doc.metadata.update(metadata)  # Add document-level metadata
             else:
-                # If not splitting by page, perform header-based splitting on the entire document                
+                # If not splitting by page, perform header-based splitting on the entire document
                 markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
                 documents = markdown_splitter.split_text(result.text_content)
                 for doc in documents:
-                    doc.metadata.update(metadata) # Add document-level metadata
+                    doc.metadata.update(metadata)  # Add document-level metadata
 
             return documents
 

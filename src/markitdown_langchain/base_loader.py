@@ -13,9 +13,9 @@ class BaseMarkitdownLoader(BaseLoader):
         from markitdown import MarkItDown
         metadata = {"source": self.file_path, "success": False}
         try:
-            file_name = os.path.basename(self.file_path)
+            file_name = self._get_file_name(self.file_path)
             metadata["file_name"] = file_name
-            file_size = os.path.getsize(self.file_path)
+            file_size = self._get_file_size(self.file_path)
             metadata["file_size"] = file_size
             converter = MarkItDown()
             try:
@@ -33,3 +33,11 @@ class BaseMarkitdownLoader(BaseLoader):
         except Exception as e:
             metadata["error"] = str(e)
             raise ValueError(f"Error loading or processing {self.file_path}: {e}")
+
+    def _get_file_name(self, file_path: str) -> str:
+        """Extracts the file name from the file path."""
+        return os.path.basename(file_path)
+
+    def _get_file_size(self, file_path: str) -> int:
+        """Returns the size of the file in bytes."""
+        return os.path.getsize(file_path)

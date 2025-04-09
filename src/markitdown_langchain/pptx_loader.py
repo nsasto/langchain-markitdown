@@ -25,8 +25,8 @@ class PptxLoader(BaseMarkitdownLoader):
 
             metadata: Dict[str, Any] = {
                 "source": self.file_path,
-                "file_name": self._get_file_name(),
-                "file_size": self._get_file_size(),
+                "file_name": self._get_file_name(self.file_path),
+                "file_size": self._get_file_size(self.file_path),
                 "conversion_success": True,
             }
 
