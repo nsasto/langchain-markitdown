@@ -1,90 +1,80 @@
 # Markitdown LangChain Integration
 
-This project provides document loaders that integrate the Markitdown library with LangChain. Markitdown allows for converting various document types (DOCX, PPTX, XLSX, and more) to Markdown, and these loaders enable you to easily load and process those documents within a LangChain pipeline.
+This project provides document loaders that seamlessly integrate the Markitdown library with LangChain. Markitdown excels at converting various document types (DOCX, PPTX, XLSX, and more) into Markdown format. These loaders empower you to effortlessly load, process, and analyze these documents within your LangChain pipelines.
 
-MarkItDown is a lightweight Python utility for converting various files to Markdown for use with LLMs and related text analysis pipelines. To this end, it is most comparable to textract, but with a focus on preserving important document structure and content as Markdown (including: headings, lists, tables, links, etc.) While the output is often reasonably presentable and human-friendly, it is meant to be consumed by text analysis tools -- and may not be the best option for high-fidelity document conversions for human consumption.
+MarkItDown is a lightweight Python utility designed for converting diverse file formats into Markdown, optimized for use with Large Language Models (LLMs) and related text analysis workflows. It shares similarities with `textract` but distinguishes itself by prioritizing the preservation of crucial document structure and content as Markdown. This includes headings, lists, tables, links, and more. While the output is generally readable, its primary purpose is to be consumed by text analysis tools, rather than serving as a high-fidelity document conversion solution for human readers.
 
-You can find the project (on github here)[https://github.com/microsoft/markitdown]
+Explore the MarkItDown project on GitHub: [https://github.com/microsoft/markitdown](https://github.com/microsoft/markitdown)
 
-At present, MarkItDown supports:
+Currently, MarkItDown supports:
 
-PDF
-PowerPoint
-Word
-Excel
-Images (EXIF metadata and OCR)
-Audio (EXIF metadata and speech transcription)
-HTML
-Text-based formats (CSV, JSON, XML)
-ZIP files (iterates over contents)
-Youtube URLs
-EPubs
-... and more!
+- PDF
+- PowerPoint
+- Word
+- Excel
+- Images (EXIF metadata and OCR)
+- Audio (EXIF metadata and speech transcription)
+- HTML
+- Text-based formats (CSV, JSON, XML)
+- ZIP files (iterates over contents)
+- YouTube URLs
+- EPUBs
+- ...and many more!
+
+While this project borrows liberally from the amazing LangChain and Markitdown projects, it is not affiliated with either in any way.
 
 ## Installation
 
-To install the package, use pip:
+Install the package using pip:
 
-
-bash pip install markitdown-langchain
+```bash
+pip install markitdown-langchain
+```
 
 ## Usage
-
-### General Example
-
-The loaders can be used to load any supported file type. Here's a general example:
-
-
-python from markitdown_langchain import # Replace with the specific loader you need from langchain_core.prompts import ChatPromptTemplate from langchain_core.output_parsers import StrOutputParser from langchain_core.runnables import RunnablePassthrough from langchain_openai import ChatOpenAI
-
-loader = # Replace with the specific loader (e.g., DocxLoader, PptxLoader, etc.) documents = loader.load()
-
-template = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know.
-
-Question: {question} Context: {context} Answer:""" prompt = ChatPromptTemplate.from_template(template)
-
-llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
-
-def format_docs(docs): return "\n\n".join(doc.page_content for doc in docs)
-
-rag_chain = ( {"context": documents | format_docs, "question": RunnablePassthrough()} | prompt | llm | StrOutputParser() )
-
-question = "What is the main topic of this document?" answer = rag_chain.invoke(question) print(answer)
 
 ### Specific Examples
 
 #### DOCX
 
 
-python from markitdown_langchain import DocxLoader
+```
+from markitdown_langchain import DocxLoader
 
-loader = DocxLoader("path/to/your/document.docx") documents = loader.load()
+loader = DocxLoader("path/to/your/document.docx")
+documents = loader.load()
+```
 
 #### PPTX
 
+```
+from markitdown_langchain import PptxLoader
 
-python from markitdown_langchain import PptxLoader
-
-loader = PptxLoader("path/to/your/presentation.pptx") documents = loader.load()
+loader = PptxLoader("path/to/your/presentation.pptx")
+documents = loader.load()
+```
 
 #### XLSX
 
 
-python from markitdown_langchain import XlsxLoader
+```
+from markitdown_langchain import XlsxLoader
 
-loader = XlsxLoader("path/to/your/spreadsheet.xlsx") documents = loader.load()
+loader = XlsxLoader("path/to/your/spreadsheet.xlsx")
+documents = loader.load()
+```
 
 ## Metadata
 
 The `Document` objects returned by the loaders include the following metadata:
 
-*   `source`: The path to the source file.
-*   `file_name`: The name of the source file.
-*   `file_size`: The size of the source file in bytes.
-*   `conversion_success`: A boolean indicating whether the conversion to Markdown was successful.
-*   `author`: The author of the document (if available in the document metadata).
-*   `page_number`: The page number (if splitting by page).
-*   Header information: When splitting by headers, the metadata will also include the header levels and values for each split.
+- `source`: The path to the source file.
+- `file_name`: The name of the source file.
+- `file_size`: The size of the source file in bytes.
+- `conversion_success`: A boolean indicating whether the conversion to Markdown was successful.
+- `author`: The author of the document (if available in the document metadata).
+- `page_number`: The page number (if splitting by page).
+Header information: When splitting by headers, the metadata will also include the header levels and values for each split.
 
 ## Contributing
 
