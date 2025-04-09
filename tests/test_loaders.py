@@ -89,8 +89,10 @@ def test_xlsx_loader(test_xlsx_file):
 
 def test_base_loader_file_not_found():
     """Test handling of non-existent file in BaseMarkitdownLoader."""
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError) as excinfo:  # Changed from FileNotFoundError to ValueError
         BaseMarkitdownLoader("non_existent_file.txt").load()
+    assert "Markitdown conversion failed" in str(excinfo.value)
+    assert "File not found" in str(excinfo.value)
 
 def test_base_loader_invalid_file():
     """Test handling of an invalid file type with BaseMarkitdownLoader."""

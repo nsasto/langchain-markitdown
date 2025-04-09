@@ -18,20 +18,44 @@ class DocxLoader(BaseMarkitdownLoader):
             converter = MarkItDown()
             result = converter.convert(self.file_path)
 
+            # Create basic metadata
             metadata: Dict[str, Any] = {
                 "source": self.file_path,
                 "file_name": self._get_file_name(self.file_path),
                 "file_size": self._get_file_size(self.file_path),
                 "conversion_success": True,
             }
+            
+            # Extract additional metadata directly from the DOCX file using python-docx
+            try:
+                from docx import Document as DocxDocument
+                doc = DocxDocument(self.file_path)
+                
+                # Extract core properties if available
+                core_props = doc.core_properties
+                if hasattr(core_props, "author") and core_props.author:
+                    metadata["author"] = core_props.author
+                if hasattr(core_props, "title") and core_props.title:
+                    metadata["title"] = core_props.title
+                if hasattr(core_props, "subject") and core_props.subject:
+                    metadata["subject"] = core_props.subject
+                if hasattr(core_props, "keywords") and core_props.keywords:
+                    metadata["keywords"] = core_props.keywords
+                if hasattr(core_props, "created") and core_props.created:
+                    metadata["created"] = str(core_props.created)
+                if hasattr(core_props, "modified") and core_props.modified:
+                    metadata["modified"] = str(core_props.modified)
+                if hasattr(core_props, "last_modified_by") and core_props.last_modified_by:
+                    metadata["last_modified_by"] = core_props.last_modified_by
+                if hasattr(core_props, "revision") and core_props.revision:
+                    metadata["revision"] = core_props.revision
+                if hasattr(core_props, "category") and core_props.category:
+                    metadata["category"] = core_props.category
+            except Exception as e:
+                # If metadata extraction fails, continue with basic metadata
+                metadata["metadata_extraction_error"] = str(e)
 
-            if result.metadata:
-                metadata.update(result.metadata)
-
-            author = result.metadata.get("author")
-            if author:
-                metadata["author"] = author
-
+            # Define default headers to split on if not provided
             if headers_to_split_on is None:
                 headers_to_split_on = [
                     ("#", "Header 1"),
