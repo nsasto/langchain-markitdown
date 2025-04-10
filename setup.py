@@ -16,7 +16,8 @@ setup(
         'markitdown[all]',  # Consider specifying a version
         'langchain_core',  # Consider specifying a version
         'langchain-text-splitters',  # Consider specifying a version
-        'langchain_openai'  # Consider specifying a version
+        'langchain_openai',  # Consider specifying a version
+        'docx'
     ],
     extras_require={
         'dev': [

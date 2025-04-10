@@ -71,8 +71,11 @@ class DocxLoader(BaseMarkitdownLoader):
                         page_metadata = metadata.copy()
                         page_metadata["page_number"] = page_num
 
-                        # Split page content by headers
-                        markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+                        # Split page content by headers, keeping the headers in the content
+                        markdown_splitter = MarkdownHeaderTextSplitter(
+                            headers_to_split_on=headers_to_split_on,
+                            return_each_line=True  # This keeps the headers in the content
+                        )
                         page_splits = markdown_splitter.split_text(page_content)
 
                         # Add split documents with updated metadata
@@ -81,16 +84,17 @@ class DocxLoader(BaseMarkitdownLoader):
                             documents.append(split)
                 else:
                     # If no page separation info, perform header-based splitting on the entire document
-                    markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+                    markdown_splitter = MarkdownHeaderTextSplitter(
+                        headers_to_split_on=headers_to_split_on,
+                        return_each_line=True  # This keeps the headers in the content
+                    )
                     documents = markdown_splitter.split_text(result.text_content)
                     for doc in documents:
                         doc.metadata.update(metadata)  # Add document-level metadata
             else:
-                # If not splitting by page, perform header-based splitting on the entire document
-                markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-                documents = markdown_splitter.split_text(result.text_content)
-                for doc in documents:
-                    doc.metadata.update(metadata)  # Add document-level metadata
+                # If not splitting by page, return a single document with all content
+                metadata["content_type"] = "document_full"
+                return [Document(page_content=result.text_content, metadata=metadata)]
 
             return documents
 
