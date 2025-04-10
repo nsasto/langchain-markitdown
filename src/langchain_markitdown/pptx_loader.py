@@ -5,13 +5,19 @@ from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_core.language_models import BaseChatModel
 import re
 import os
+import logging
 from .utils import get_image_caption  # Import the function
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class PptxLoader(BaseMarkitdownLoader):
     def __init__(self, file_path: str, split_by_page: bool = False, llm: Optional[BaseChatModel] = None):
         super().__init__(file_path)
         self.split_by_page = split_by_page
         self.llm = llm
+        logger.info(f"Initialized PptxLoader for {file_path} with split_by_page={split_by_page}")
+        logger.info(f"LLM for image captioning: {llm.__class__.__name__ if llm else 'None'}")
 
     def load(
         self, 
@@ -21,6 +27,8 @@ class PptxLoader(BaseMarkitdownLoader):
         try:
             # Basic converter for fallback when MarkitdownConverterOptions isn't available
             from markitdown import MarkItDown
+            
+            logger.info(f"Starting to load PPTX file: {self.file_path}")
             
             # Create basic metadata
             metadata: Dict[str, Any] = {
@@ -35,8 +43,11 @@ class PptxLoader(BaseMarkitdownLoader):
                 from pptx import Presentation
                 prs = Presentation(self.file_path)
                 
+                logger.info(f"Extracting metadata from PPTX file")
+                
                 # Basic presentation stats
                 metadata["slide_count"] = len(prs.slides)
+                logger.info(f"Found {metadata['slide_count']} slides in the presentation")
                 
                 # Core properties
                 if hasattr(prs, 'core_properties'):
@@ -85,22 +96,44 @@ class PptxLoader(BaseMarkitdownLoader):
                 
             except Exception as e:
                 # If metadata extraction fails, continue with basic metadata
+                logger.warning(f"Failed to extract detailed metadata: {str(e)}")
                 metadata["metadata_extraction_error"] = str(e)
             
             # Try to use MarkitdownConverterOptions for image captioning if available
             try:
                 from markitdown import MarkitdownConverterOptions
+                
+                # Define a logging wrapper for the image caption function
+                def image_caption_with_logging(file_stream, stream_info, **kwargs):
+                    logger.info(f"Attempting to caption image: {stream_info.name if hasattr(stream_info, 'name') else 'unknown'}")
+                    
+                    if self.llm:
+                        logger.info(f"Using {self.llm.__class__.__name__} for image captioning")
+                        caption = get_image_caption(self.llm, file_stream, stream_info)
+                        if caption:
+                            logger.info(f"Successfully generated caption: {caption[:50]}...")
+                        else:
+                            logger.warning("Failed to generate caption")
+                        return caption
+                    else:
+                        logger.info("No LLM provided, skipping image captioning")
+                        return None
+                
+                logger.info("Setting up MarkItDown with image captioning capabilities")
                 converter = MarkItDown(options=MarkitdownConverterOptions(
-                    llm_for_image_caption=lambda file_stream, stream_info, **kwargs: 
-                        get_image_caption(self.llm, file_stream, stream_info) if self.llm else None
+                    llm_for_image_caption=image_caption_with_logging
                 ))
+                
             except ImportError:
                 # Fall back to basic converter if MarkitdownConverterOptions is not available
+                logger.warning("MarkitdownConverterOptions not available, using basic converter without image captioning")
                 converter = MarkItDown()
                 metadata["image_captioning"] = "disabled - MarkitdownConverterOptions not available"
             
             # Convert the presentation to markdown
+            logger.info("Converting PPTX to markdown")
             result = converter.convert(self.file_path)
+            logger.info(f"Conversion complete, markdown content length: {len(result.text_content)} characters")
 
             # Define default headers to split on if not provided
             if headers_to_split_on is None:
@@ -162,4 +195,5 @@ class PptxLoader(BaseMarkitdownLoader):
             return documents
 
         except Exception as e:
+            logger.error(f"Failed to load and convert PPTX file: {str(e)}")
             raise ValueError(f"Failed to load and convert PPTX file: {e}")
