@@ -127,7 +127,10 @@ class PptxLoader(BaseMarkitdownLoader):
                         page_metadata["content_type"] = "presentation_slide"
                         
                         # Split page content by headers
-                        markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+                        markdown_splitter = MarkdownHeaderTextSplitter(
+                            headers_to_split_on=headers_to_split_on,
+                            return_each_line=True  # This keeps the headers in the content
+                        )
                         page_splits = markdown_splitter.split_text(current_page_content)
                         
                         # Add split documents with updated metadata
@@ -143,18 +146,18 @@ class PptxLoader(BaseMarkitdownLoader):
                     page_metadata = metadata.copy()
                     page_metadata["page_number"] = current_page_num
                     page_metadata["content_type"] = "presentation_slide"
-                    markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+                    markdown_splitter = MarkdownHeaderTextSplitter(
+                            headers_to_split_on=headers_to_split_on,
+                            return_each_line=True  # This keeps the headers in the content
+                        )
                     page_splits = markdown_splitter.split_text(current_page_content)
                     for split in page_splits:
                         split.metadata.update(page_metadata)
                         documents.append(split)
             else:
-                # If not splitting by page, perform header-based splitting on the entire document
-                markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-                documents = markdown_splitter.split_text(result.text_content)
-                for doc in documents:
-                    doc.metadata.update(metadata)
-                    doc.metadata["content_type"] = "presentation_full"
+                # If not splitting by page, return a single document with all content
+                metadata["content_type"] = "presentation_full"
+                return [Document(page_content=result.text_content, metadata=metadata)]
 
             return documents
 
