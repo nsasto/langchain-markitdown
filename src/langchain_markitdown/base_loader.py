@@ -3,12 +3,21 @@ from typing import List
 from langchain_core.documents import Document
 import os
 
+import logging
+
+logger = logging.getLogger(__name__)  # Get the logger for this module
+
 class BaseMarkitdownLoader(BaseLoader):
     """Base class for Markitdown document loaders."""
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, verbose: bool = False):  # Add verbose parameter
         self.file_path = file_path
-
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")  # Create a logger for this instance
+        if verbose:
+            self.logger.setLevel(logging.INFO)  # Set logging level for this instance if verbose is True
+        else:
+            self.logger.setLevel(logging.WARNING) # Set default to WARNING to avoid excessive output
+        self.logger.info(f"Initialized {self.__class__.__name__} for {file_path}")  # Use instance logger
     def load(self) -> List[Document]:  # Specify return type as List[Document]
         from markitdown import MarkItDown
         metadata = {"source": self.file_path, "success": False}

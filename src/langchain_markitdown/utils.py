@@ -1,11 +1,12 @@
-from typing import BinaryIO, Optional, Tuple
+from typing import BinaryIO, Optional, Tuple, Union
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage
 import base64
+import imghdr
 import mimetypes
 
 def get_image_caption(
-    llm: BaseChatModel, file_stream: BinaryIO, stream_info, prompt: Optional[str] = None
+    llm: BaseChatModel, file_stream: BinaryIO, stream_info, prompt: Optional[str] = None,
 ) -> Optional[str]:
     """Generates a caption for an image using a Langchain chat model."""
 
@@ -49,3 +50,44 @@ def get_image_caption(
     except Exception as e:
         print(f"Error during LLM captioning: {e}")
         return None
+
+
+def langchain_caption_adapter(
+    file_stream: BinaryIO, stream_info, client, model, prompt: Optional[str] = None
+) -> Union[None, str]:
+    """
+    Adapter function to use a Langchain BaseChatModel for image captioning with the markitdown library.
+    """
+    try:
+        # Adapter function to use a Langchain BaseChatModel for image captioning with the markitdown library.
+        return get_image_caption(
+            llm=client, file_stream=file_stream, stream_info=stream_info, prompt=prompt
+        )
+    except Exception as e:
+        print(f"Error during Langchain LLM captioning: {e}")
+        return None
+
+def get_image_format(image_data: bytes) -> Tuple[str, str]:
+    """
+    Identifies the image format and returns the MIME type and extension.
+    """
+    image_type = imghdr.what(None, h=image_data)
+    if image_type == 'jpeg':
+        return "image/jpeg", ".jpg"
+    elif image_type == 'png':
+        return "image/png", ".png"
+    elif image_type == 'gif':
+        return "image/gif", ".gif"
+    elif image_type == 'webp':
+        return "image/webp", ".webp"
+    else:
+        return "application/octet-stream", ".bin"  # Default, handle as binary
+
+def langchain_caption_adapter(
+    file_stream: BinaryIO, stream_info, client, model, prompt: Optional[str] = None
+) -> Union[None, str]:
+    if not stream_info.mimetype:
+        stream_info.mimetype, stream_info.extension = get_image_format(file_stream.getvalue())
+    return get_image_caption(
+        llm=client, file_stream=file_stream, stream_info=stream_info, prompt=prompt
+    )

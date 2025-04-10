@@ -6,29 +6,29 @@ from langchain_core.language_models import BaseChatModel
 import re
 import os
 import logging
-from .utils import get_image_caption  # Import the function
+from .utils import langchain_caption_adapter  # Import the adapter function
 
-# Set up logging
-logger = logging.getLogger(__name__)
 
 class PptxLoader(BaseMarkitdownLoader):
-    def __init__(self, file_path: str, split_by_page: bool = False, llm: Optional[BaseChatModel] = None):
-        super().__init__(file_path)
+    def __init__(self, file_path: str, split_by_page: bool = False, llm: Optional[BaseChatModel] = None, prompt: Optional[str] = None, verbose: Optional[bool] = None):  # verbose is optional
+        super().__init__(file_path, verbose=verbose) # Use inherited or passed-in value
         self.split_by_page = split_by_page
         self.llm = llm
-        logger.info(f"Initialized PptxLoader for {file_path} with split_by_page={split_by_page}")
-        logger.info(f"LLM for image captioning: {llm.__class__.__name__ if llm else 'None'}")
+        self.prompt = prompt
+        self.logger.info(f"Initialized PptxLoader for {file_path} with split_by_page={split_by_page}")  # Use instance logger
+        self.logger.info(f"Langchain LLM for image captioning: {llm.__class__.__name__ if llm else 'None'}")  # Use instance logger
 
     def load(
         self, 
         headers_to_split_on: Optional[List[str]] = None
     ) -> List[Document]:
         """Load a PPTX file and convert it to Langchain documents, splitting by Markdown headers."""
+        import io
         try:
             # Basic converter for fallback when MarkitdownConverterOptions isn't available
             from markitdown import MarkItDown
             
-            logger.info(f"Starting to load PPTX file: {self.file_path}")
+            self.logger.info(f"Starting to load PPTX file: {self.file_path}")  # Use instance logger
             
             # Create basic metadata
             metadata: Dict[str, Any] = {
@@ -43,12 +43,12 @@ class PptxLoader(BaseMarkitdownLoader):
                 from pptx import Presentation
                 prs = Presentation(self.file_path)
                 
-                logger.info(f"Extracting metadata from PPTX file")
+                self.logger.info(f"Extracting metadata from PPTX file")  # Use instance logger
                 
                 # Basic presentation stats
                 metadata["slide_count"] = len(prs.slides)
-                logger.info(f"Found {metadata['slide_count']} slides in the presentation")
-                
+                self.logger.info(f"Found {metadata['slide_count']} slides in the presentation")  # Use instance logger
+
                 # Core properties
                 if hasattr(prs, 'core_properties'):
                     core_props = prs.core_properties
@@ -96,44 +96,55 @@ class PptxLoader(BaseMarkitdownLoader):
                 
             except Exception as e:
                 # If metadata extraction fails, continue with basic metadata
-                logger.warning(f"Failed to extract detailed metadata: {str(e)}")
+                self.logger.warning(f"Failed to extract detailed metadata: {str(e)}")  # Use instance logger
                 metadata["metadata_extraction_error"] = str(e)
             
-            # Try to use MarkitdownConverterOptions for image captioning if available
-            try:
-                from markitdown import MarkitdownConverterOptions
-                
-                # Define a logging wrapper for the image caption function
-                def image_caption_with_logging(file_stream, stream_info, **kwargs):
-                    logger.info(f"Attempting to caption image: {stream_info.name if hasattr(stream_info, 'name') else 'unknown'}")
-                    
-                    if self.llm:
-                        logger.info(f"Using {self.llm.__class__.__name__} for image captioning")
-                        caption = get_image_caption(self.llm, file_stream, stream_info)
-                        if caption:
-                            logger.info(f"Successfully generated caption: {caption[:50]}...")
-                        else:
-                            logger.warning("Failed to generate caption")
-                        return caption
-                    else:
-                        logger.info("No LLM provided, skipping image captioning")
-                        return None
-                
-                logger.info("Setting up MarkItDown with image captioning capabilities")
-                converter = MarkItDown(options=MarkitdownConverterOptions(
-                    llm_for_image_caption=image_caption_with_logging
-                ))
-                
-            except ImportError:
-                # Fall back to basic converter if MarkitdownConverterOptions is not available
-                logger.warning("MarkitdownConverterOptions not available, using basic converter without image captioning")
-                converter = MarkItDown()
-                metadata["image_captioning"] = "disabled - MarkitdownConverterOptions not available"
+            converter = MarkItDown()  # Instantiate the basic converter directly
             
             # Convert the presentation to markdown
-            logger.info("Converting PPTX to markdown")
+            self.logger.info("Converting PPTX to markdown")  # Use instance logger
             result = converter.convert(self.file_path)
-            logger.info(f"Conversion complete, markdown content length: {len(result.text_content)} characters")
+            markdown_content = result.text_content
+
+            # Integrate image captioning
+            if self.llm:
+                self.logger.info("Integrating image captions into markdown")
+                from pptx import Presentation  # Import Presentation here
+                prs = Presentation(self.file_path)  # Re-open the presentation for shape access
+                for i, slide in enumerate(prs.slides):
+                    for shape in slide.shapes:
+                        if shape.shape_type == 13:  # Picture
+                            # Get image data
+                            image_data = shape.image.blob
+                            image_stream = io.BytesIO(image_data)
+                            # Create a dummy stream info (MarkItDown doesn't seem to use it fully)
+                            class DummyStreamInfo:
+                                def __init__(self):
+                                    self.mimetype = shape.image.content_type
+                                    self.extension = ".jpg"  # Or guess from mimetype
+                                    self.name = shape.name
+                            stream_info = DummyStreamInfo()
+                            
+                            self.logger.info(f"Captioning image: {shape.name}")  # Log shape name  # Use instance logger
+                            # Generate caption
+                            caption = langchain_caption_adapter(
+                                file_stream=image_stream,  # Pass the image data directly
+                                stream_info=stream_info,
+                                client=self.llm,
+                                model=None,
+                                prompt=self.prompt
+                            )
+                            if caption:
+                                self.logger.info(f"Generated caption: {caption[:50]}...")  # Log caption (first 50 chars)  # Use instance logger
+                                # Find the image alt text placeholder in the markdown and replace it
+                                # This is a HACK, as we're making assumptions about MarkItDown's output format.  It may break if MarkItDown changes.
+                                # A more robust solution would require modifying MarkItDown itself.
+                                alt_text_placeholder = f"![]({shape.name}.jpg)"  # Assuming MarkItDown uses shape.name.jpg as the placeholder
+                                markdown_content = markdown_content.replace(alt_text_placeholder, f"![{caption}]()")
+                            else:
+                                self.logger.info("No caption generated")  # Log if no caption  # Use instance logger
+            
+            self.logger.info(f"Conversion complete, markdown content length: {len(markdown_content)} characters")
 
             # Define default headers to split on if not provided
             if headers_to_split_on is None:
@@ -147,53 +158,49 @@ class PptxLoader(BaseMarkitdownLoader):
                 # Split by slide number indicators
                 documents = []
                 slide_pattern = r"\n\n<!-- Slide number: (\d+) -->\n"
-                slide_splits = re.split(slide_pattern, result.text_content)
+                slide_splits = re.split(slide_pattern, markdown_content)  # Use the modified markdown_content
                 
                 # The first element will be the content before the first slide indicator
                 current_page_content = slide_splits[0]
-                current_page_num = 1  # Assume the content before the first indicator belongs to slide 1
+                current_page_num = 1
 
                 for i in range(1, len(slide_splits), 2):
-                    if current_page_content.strip():  # Avoid empty pages
+                    if current_page_content.strip():
                         page_metadata = metadata.copy()
                         page_metadata["page_number"] = current_page_num
                         page_metadata["content_type"] = "presentation_slide"
                         
-                        # Split page content by headers
                         markdown_splitter = MarkdownHeaderTextSplitter(
                             headers_to_split_on=headers_to_split_on,
-                            return_each_line=True  # This keeps the headers in the content
+                            return_each_line=True
                         )
                         page_splits = markdown_splitter.split_text(current_page_content)
                         
-                        # Add split documents with updated metadata
                         for split in page_splits:
                             split.metadata.update(page_metadata)
                             documents.append(split)
 
-                    current_page_num = int(slide_splits[i])  # Get the slide number from the indicator
-                    current_page_content = slide_splits[i + 1]  # Get the content of the current slide
+                    current_page_num = int(slide_splits[i])
+                    current_page_content = slide_splits[i + 1]
 
-                # Add the last page
                 if current_page_content.strip():
                     page_metadata = metadata.copy()
                     page_metadata["page_number"] = current_page_num
                     page_metadata["content_type"] = "presentation_slide"
                     markdown_splitter = MarkdownHeaderTextSplitter(
                             headers_to_split_on=headers_to_split_on,
-                            return_each_line=True  # This keeps the headers in the content
+                            return_each_line=True
                         )
                     page_splits = markdown_splitter.split_text(current_page_content)
                     for split in page_splits:
                         split.metadata.update(page_metadata)
                         documents.append(split)
             else:
-                # If not splitting by page, return a single document with all content
                 metadata["content_type"] = "presentation_full"
-                return [Document(page_content=result.text_content, metadata=metadata)]
+                return [Document(page_content=markdown_content, metadata=metadata)]  # Use the modified markdown_content
 
             return documents
 
         except Exception as e:
-            logger.error(f"Failed to load and convert PPTX file: {str(e)}")
+            self.logger.error(f"Failed to load and convert PPTX file: {str(e)}")
             raise ValueError(f"Failed to load and convert PPTX file: {e}")
