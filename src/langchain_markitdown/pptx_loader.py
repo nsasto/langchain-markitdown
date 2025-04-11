@@ -92,7 +92,7 @@ class PptxLoader(BaseMarkitdownLoader):
                             self.logger.info(f"Generated caption: {caption[:50]}...")
                             cleaned_shape_name = re.sub(r"\W", "", shape.name)
                             alt_text_pattern = r"!\[.*?]\(" + re.escape(f"{cleaned_shape_name}.jpg") + r"\)"
-                            markdown_content = re.sub(alt_text_pattern, f"![{caption}]()", markdown_content)
+                            markdown_content = re.sub(alt_text_pattern, f"![{caption}]({cleaned_shape_name}.jpg)", markdown_content)
                     except Exception as e:
                         self.logger.error(f"Error during LLM captioning: {e}")
         return markdown_content
