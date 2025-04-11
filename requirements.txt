@@ -3,3 +3,4 @@ langchain_core
 langchain-text-splitters
 langchain_openai  # Add this if using OpenAI models for PPTX captioning
 python-docx
+pillow
