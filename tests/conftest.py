@@ -1,5 +1,7 @@
 import pytest
 import os
+from PIL import Image
+
 
 @pytest.fixture(scope="module")
 def test_docx_file(tmpdir_factory):
@@ -49,4 +51,24 @@ def test_xlsx_file(tmpdir_factory):
         wb.save(fn)
     except ImportError:
         pytest.skip("openpyxl package not installed. Install with 'pip install openpyxl'")
+    return str(fn)
+
+
+@pytest.fixture(scope="module")
+def test_text_file(tmpdir_factory):
+    """Creates a temporary text file for testing."""
+    fn = tmpdir_factory.mktemp("data").join("test.txt")
+    with open(fn, 'w', encoding='utf-8') as f:
+        f.write("This is a test file.\n\nIt has multiple lines.\n\n# Header 1\n\nSome content.\n\n## Header 2\n\nMore content.")
+    return str(fn)
+
+
+@pytest.fixture(scope="module")
+def test_image_file(tmpdir_factory):
+    """Creates a temporary image file for testing."""
+    fn = tmpdir_factory.mktemp("data").join("test.png")
+    
+    # Create a simple test image
+    img = Image.new('RGB', (100, 100), color = (73, 109, 137))
+    img.save(fn)
     return str(fn)
