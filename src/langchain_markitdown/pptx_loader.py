@@ -125,7 +125,14 @@ class PptxLoader(BaseMarkitdownLoader):
                                     self.name = shape.name
                             stream_info = DummyStreamInfo()
                             
-                            self.logger.info(f"Captioning image: {shape.name}")  # Log shape name  # Use instance logger
+                            # Check if the image format is supported BEFORE captioning
+                            from .utils import get_image_format
+                            stream_info.mimetype, stream_info.extension = get_image_format(image_data)
+                            if stream_info.mimetype not in ["image/png", "image/jpeg", "image/gif", "image/webp"]:
+                                self.logger.warning(f"Skipping captioning for unsupported image format: {stream_info.mimetype} (Shape: {shape.name})")
+                                continue # Skip to the next shape
+
+                            self.logger.info(f"Captioning image: {shape.name} (Format: {stream_info.mimetype})")  # Updated logging
                             # Generate caption
                             caption = langchain_caption_adapter(
                                 file_stream=image_stream,  # Pass the image data directly

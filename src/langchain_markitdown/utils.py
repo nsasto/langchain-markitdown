@@ -11,7 +11,7 @@ def get_image_caption(
     """Generates a caption for an image using a Langchain chat model."""
 
     if prompt is None or prompt.strip() == "":
-        prompt = "Write a detailed caption for this image."
+        prompt = "Write a detailed caption for this image. If you cannot, try and describe what you see. If this is not possible simply return 'no caption provided for this image'"
 
     # Get the content type
     content_type = stream_info.mimetype
