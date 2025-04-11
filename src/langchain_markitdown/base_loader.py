@@ -17,6 +17,12 @@ class BaseMarkitdownLoader(BaseLoader):
             self.logger.setLevel(logging.INFO)  # Set logging level for this instance if verbose is True
         else:
             self.logger.setLevel(logging.WARNING) # Set default to WARNING to avoid excessive output
+
+        # Add a console handler
+        ch = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
         self.logger.info(f"Initialized {self.__class__.__name__} for {file_path}")  # Use instance logger
     def load(self) -> List[Document]:  # Specify return type as List[Document]
         from markitdown import MarkItDown
