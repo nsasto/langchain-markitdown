@@ -5,7 +5,15 @@ import os
 
 import logging
 
-logger = logging.getLogger(__name__)  # Get the logger for this module
+module_logger = logging.getLogger(__name__)  # Get the logger for this module
+module_logger.setLevel(logging.WARNING)  # Default level
+
+# Add a console handler at the module level, but only if one doesn't exist.
+if not module_logger.hasHandlers():
+    ch = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    module_logger.addHandler(ch)
 
 class BaseMarkitdownLoader(BaseLoader):
     """Base class for Markitdown document loaders."""
@@ -13,16 +21,11 @@ class BaseMarkitdownLoader(BaseLoader):
     def __init__(self, file_path: str, verbose: bool = False):  # Add verbose parameter
         self.file_path = file_path
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")  # Create a logger for this instance
+
+        # Set the level for this instance, but rely on the module-level handler
         if verbose:
             self.logger.setLevel(logging.INFO)  # Set logging level for this instance if verbose is True
-        else:
-            self.logger.setLevel(logging.WARNING) # Set default to WARNING to avoid excessive output
-
-        # Add a console handler
-        ch = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        self.logger.addHandler(ch)
+        
         self.logger.info(f"Initialized {self.__class__.__name__} for {file_path}")  # Use instance logger
     def load(self) -> List[Document]:  # Specify return type as List[Document]
         from markitdown import MarkItDown
