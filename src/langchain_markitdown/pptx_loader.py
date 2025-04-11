@@ -5,6 +5,7 @@ from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_core.language_models import BaseChatModel
 import re
 import os
+import io
 import logging
 from .utils import langchain_caption_adapter  # Import the adapter function
 
@@ -23,7 +24,6 @@ class PptxLoader(BaseMarkitdownLoader):
         headers_to_split_on: Optional[List[str]] = None
     ) -> List[Document]:
         """Load a PPTX file and convert it to Langchain documents, splitting by Markdown headers."""
-        import io
         try:
             # Basic converter for fallback when MarkitdownConverterOptions isn't available
             from markitdown import MarkItDown
