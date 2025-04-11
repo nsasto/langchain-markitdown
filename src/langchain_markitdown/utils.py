@@ -51,22 +51,6 @@ def get_image_caption(
         print(f"Error during LLM captioning: {e}")
         return None
 
-
-def langchain_caption_adapter(
-    file_stream: BinaryIO, stream_info, client, model, prompt: Optional[str] = None
-) -> Union[None, str]:
-    """
-    Adapter function to use a Langchain BaseChatModel for image captioning with the markitdown library.
-    """
-    try:
-        # Adapter function to use a Langchain BaseChatModel for image captioning with the markitdown library.
-        return get_image_caption(
-            llm=client, file_stream=file_stream, stream_info=stream_info, prompt=prompt
-        )
-    except Exception as e:
-        print(f"Error during Langchain LLM captioning: {e}")
-        return None
-
 def get_image_format(image_data: bytes) -> Tuple[str, str]:
     """
     Identifies the image format and returns the MIME type and extension.
