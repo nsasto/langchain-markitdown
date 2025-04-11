@@ -51,7 +51,7 @@ class DocxLoader(BaseMarkitdownLoader):
                     metadata["revision"] = core_props.revision
                 if hasattr(core_props, "category") and core_props.category:
                     metadata["category"] = core_props.category
-            except Exception as e:
+            except Exception as e:  # Catch any exception during metadata extraction
                 # If metadata extraction fails, continue with basic metadata
                 metadata["metadata_extraction_error"] = str(e)
 
