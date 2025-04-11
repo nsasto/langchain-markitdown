@@ -137,19 +137,20 @@ class PptxLoader(BaseMarkitdownLoader):
                             caption = langchain_caption_adapter(
                                 file_stream=image_stream,  # Pass the image data directly
                                 stream_info=stream_info,
-                                client=self.llm,
+                                client=self.llm,  # Use instance logger
                                 model=None,
                                 prompt=self.prompt
-                            )
+                            )  # Use instance logger
                             if caption:
                                 self.logger.info(f"Generated caption: {caption[:50]}...")  # Log caption (first 50 chars)  # Use instance logger
-                                # Find the image alt text placeholder in the markdown and replace it
-                                # This is a HACK, as we're making assumptions about MarkItDown's output format.  It may break if MarkItDown changes.
-                                # A more robust solution would require modifying MarkItDown itself.
-                                alt_text_placeholder = f"![]({shape.name}.jpg)"  # Assuming MarkItDown uses shape.name.jpg as the placeholder
-                                markdown_content = markdown_content.replace(alt_text_placeholder, f"![{caption}]()")
+                                # Clean the shape name to match the generated filename
+                                cleaned_shape_name = re.sub(r"\W", "", shape.name)
+                                # Find the image placeholder with alt text and replace the alt text and link
+                                alt_text_pattern = r"!\[.*?]\(" + re.escape(f"{cleaned_shape_name}.jpg") + r"\)"
+                                markdown_content = re.sub(alt_text_pattern, f"![{caption}]()", markdown_content)
                             else:
                                 self.logger.info("No caption generated")  # Log if no caption  # Use instance logger
+
             
             self.logger.info(f"Conversion complete, markdown content length: {len(markdown_content)} characters")
 
