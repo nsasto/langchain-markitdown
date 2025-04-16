@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='langchain-markitdown',
-    version='0.1.4',
+    version='0.1.5',
     description='LangChain data loaders based on Markdown by @untrueaxioms.',
     author='Nathan Sasto',
     url="https://github.com/nsasto/langchain-markitdown",
