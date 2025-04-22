@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from langchain_core.documents import Document
-from .base_loader import BaseMarkitdownLoader
+from ..base_loader import BaseMarkitdownLoader
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 
 class DocxLoader(BaseMarkitdownLoader):

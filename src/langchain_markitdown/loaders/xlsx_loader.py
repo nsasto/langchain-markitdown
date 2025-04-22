@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from langchain_core.documents import Document
-from .base_loader import BaseMarkitdownLoader
+from ..base_loader import BaseMarkitdownLoader
 
 class XlsxLoader(BaseMarkitdownLoader):
     """Loader for XLSX files."""

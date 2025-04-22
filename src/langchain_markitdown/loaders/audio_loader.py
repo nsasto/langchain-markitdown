@@ -1,4 +1,4 @@
-from langchain_markitdown.base_loader import BaseMarkitdownLoader
+from ..base_loader import BaseMarkitdownLoader
 
 class AudioLoader(BaseMarkitdownLoader):
     """Loader for audio files."""
