@@ -39,7 +39,7 @@ pip install langchain-markitdown
 
 
 ```
-from markitdown_langchain import DocxLoader
+from langchain_markitdown import DocxLoader
 
 loader = DocxLoader("path/to/your/document.docx")
 documents = loader.load()
@@ -48,7 +48,7 @@ documents = loader.load()
 #### PPTX
 
 ```
-from markitdown_langchain import PptxLoader
+from langchain_markitdown import PptxLoader
 
 loader = PptxLoader("path/to/your/presentation.pptx")
 documents = loader.load()
@@ -58,7 +58,7 @@ documents = loader.load()
 
 
 ```
-from markitdown_langchain import XlsxLoader
+from langchain_markitdown import XlsxLoader
 
 loader = XlsxLoader("path/to/your/spreadsheet.xlsx")
 documents = loader.load()
