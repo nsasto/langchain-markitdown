@@ -28,7 +28,7 @@ While this project borrows liberally from the amazing LangChain and Markitdown p
 Install the package using pip:
 
 ```bash
-pip install markitdown-langchain
+pip install langchain-markitdown
 ```
 
 ## Usage
