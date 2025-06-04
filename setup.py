@@ -4,6 +4,15 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
+install_requires = [
+    'markitdown[all]>=0.1.1',
+    'langchain-core>=0.3.59',
+    'langchain-text-splitters>=0.3.8',
+    'langchain_openai',
+    'python-docx>=1.1.2',
+    'pillow>=11.1.0',
+]
+
 setup(
     name='langchain-markitdown',
     version='0.1.6',
@@ -12,13 +21,7 @@ setup(
     url="https://github.com/nsasto/langchain-markitdown",
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
-    install_requires=[
-        'markitdown[all]',  # Consider specifying a version
-        'langchain_core',  # Consider specifying a version
-        'langchain-text-splitters',  # Consider specifying a version
-        'langchain_openai',  # Consider specifying a version
-        'docx'
-    ],
+    install_requires=install_requires,
     extras_require={
         'dev': [
             'pytest',

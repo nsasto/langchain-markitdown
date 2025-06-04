@@ -1,3 +1,11 @@
+# langchain-markitdown
+
+[![Build](https://github.com/nsasto/langchain-markitdown/actions/workflows/publish.yml/badge.svg)](https://github.com/nsasto/langchain-markitdown/actions)
+[![License](https://img.shields.io/github/license/nsasto/langchain-markitdown)](https://github.com/nsasto/langchain-markitdown/blob/main/LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/nsasto/langchain-markitdown)](https://github.com/nsasto/langchain-markitdown/commits)
+[![Contributors](https://img.shields.io/github/contributors/nsasto/langchain-markitdown)](https://github.com/nsasto/langchain-markitdown/graphs/contributors)
+
+
 # Markitdown LangChain Integration
 
 This project provides document loaders that seamlessly integrate the Markitdown library with LangChain. Markitdown excels at converting various document types (DOCX, PPTX, XLSX, and more) into Markdown format. These loaders empower you to effortlessly load, process, and analyze these documents within your LangChain pipelines.

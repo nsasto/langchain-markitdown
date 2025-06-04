@@ -1,6 +1,6 @@
-markitdown[all]
-langchain_core
-langchain-text-splitters
+markitdown[all]>=0.1.1
+langchain-core>=0.3.59
+langchain-text-splitters>=0.3.8
 langchain_openai  # Add this if using OpenAI models for PPTX captioning
-python-docx
-pillow
+python-docx>=1.1.2
+pillow>=11.1.0
