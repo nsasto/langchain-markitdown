@@ -15,7 +15,7 @@ install_requires = [
 
 setup(
     name="langchain-markitdown",
-    version="0.1.8",
+    version="1.0.0",
     description="LangChain data loaders based on Markdown by @untrueaxioms.",
     author="Nathan Sasto",
     url="https://github.com/nsasto/langchain-markitdown",
