@@ -1,6 +1,78 @@
-import pytest
 import os
+from typing import Any, Callable, Dict, List, Optional
+
+import pytest
 from PIL import Image
+
+
+class FakeConversionResult:
+    """Lightweight stand-in for MarkItDown's conversion response."""
+
+    def __init__(
+        self,
+        *,
+        text_content: str = "",
+        pages: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        attachments: Optional[List[Any]] = None,
+        output_type: str = "markdown",
+        format_type: str = "text/plain",
+    ):
+        self.text_content = text_content
+        self.pages = pages
+        self.metadata = metadata or {}
+        self.attachments = attachments or []
+        self.output_type = output_type
+        self.format_type = format_type
+
+
+class FakeMarkItDown:
+    """Simple callable converter used to isolate tests from the real dependency."""
+
+    def __init__(self, result_factory: Callable[[str], FakeConversionResult]):
+        self._result_factory = result_factory
+        self.convert_calls: List[str] = []
+
+    def convert(self, file_path: str) -> FakeConversionResult:
+        self.convert_calls.append(file_path)
+        return self._result_factory(file_path)
+
+
+@pytest.fixture
+def fake_converter_factory():
+    """Factory fixture to generate fake converters for tests."""
+
+    def _factory(
+        *,
+        text_content: str = "",
+        pages: Optional[List[str]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        attachments: Optional[List[Any]] = None,
+        output_type: str = "markdown",
+        format_type: str = "text/plain",
+        result_factory: Optional[Callable[[str], FakeConversionResult]] = None,
+        exception: Optional[Exception] = None,
+    ) -> FakeMarkItDown:
+        if exception is not None:
+            def _raise(_: str) -> FakeConversionResult:
+                raise exception
+
+            return FakeMarkItDown(_raise)
+
+        if result_factory is not None:
+            return FakeMarkItDown(result_factory)
+
+        result = FakeConversionResult(
+            text_content=text_content,
+            pages=pages,
+            metadata=metadata,
+            attachments=attachments,
+            output_type=output_type,
+            format_type=format_type,
+        )
+        return FakeMarkItDown(lambda _: result)
+
+    return _factory
 
 
 @pytest.fixture(scope="module")

@@ -1,57 +1,122 @@
-from langchain_core.document_loaders import BaseLoader
-from typing import List
-from langchain_core.documents import Document
-import os
+from __future__ import annotations
 
 import logging
+import os
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-module_logger = logging.getLogger(__name__)  # Get the logger for this module
-module_logger.setLevel(logging.WARNING)  # Default level
+from langchain_core.document_loaders import BaseLoader
+from langchain_core.documents import Document
 
-# Add a console handler at the module level, but only if one doesn't exist.
+if TYPE_CHECKING:
+    from markitdown import MarkItDown
+
+module_logger = logging.getLogger(__name__)
+module_logger.setLevel(logging.WARNING)
+
 if not module_logger.hasHandlers():
-    ch = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    ch.setFormatter(formatter)
-    module_logger.addHandler(ch)
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    handler.setFormatter(formatter)
+    module_logger.addHandler(handler)
+
 
 class BaseMarkitdownLoader(BaseLoader):
-    """Base class for Markitdown document loaders."""
+    """Base class for MarkItDown document loaders."""
 
-    def __init__(self, file_path: str, verbose: bool = False):  # Add verbose parameter
+    def __init__(
+        self,
+        file_path: str,
+        verbose: bool = False,
+        *,
+        converter: Optional["MarkItDown"] = None,
+    ):
         self.file_path = file_path
-        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")  # Create a logger for this instance
+        self._converter = converter
 
-        # Set the level for this instance, but rely on the module-level handler
+        self.logger = logging.getLogger(
+            f"{__name__}.{self.__class__.__name__}",
+        )
         if verbose:
-            self.logger.setLevel(logging.INFO)  # Set logging level for this instance if verbose is True
-        
-        self.logger.info(f"Initialized {self.__class__.__name__} for {file_path}")  # Use instance logger
-    def load(self) -> List[Document]:  # Specify return type as List[Document]
-        from markitdown import MarkItDown
-        metadata = {"source": self.file_path, "success": False}
+            self.logger.setLevel(logging.INFO)
+
+        self.logger.info("Initialized %s for %s", self.__class__.__name__, file_path)
+
+    def load(self) -> List[Document]:
+        """Convert the target file into a single LangChain document."""
+        metadata: Dict[str, Any] = {
+            "source": self.file_path,
+            "success": False,
+            "conversion_success": False,
+        }
+
         try:
-            file_name = self._get_file_name(self.file_path)
-            metadata["file_name"] = file_name
-            file_size = self._get_file_size(self.file_path)
-            metadata["file_size"] = file_size
-            converter = MarkItDown()
-            try:
-                markdown_content = converter.convert(self.file_path).text_content
-                metadata["success"] = True
-                document = Document(page_content=markdown_content, metadata=metadata)
-                return [document]
-            except Exception as e:
-                metadata["success"] = False
-                metadata["error"] = str(e)
-                raise ValueError(f"Markitdown conversion failed for {self.file_path}: {e}")
-        except FileNotFoundError:
+            metadata.update(self._file_metadata())
+            result = self._convert_to_markdown()
+            metadata["success"] = True
+            metadata["conversion_success"] = True
+            metadata.update(self._extract_conversion_metadata(result))
+
+            page_content = self._get_text_content(result)
+            return [Document(page_content=page_content, metadata=metadata)]
+        except FileNotFoundError as exc:
             metadata["error"] = "File not found."
-            # Adjust the error message to include "Markitdown conversion failed" to match test expectations
-            raise ValueError(f"Markitdown conversion failed for {self.file_path}: File not found")
-        except Exception as e:
-            metadata["error"] = str(e)
-            raise ValueError(f"Markitdown conversion failed for {self.file_path}: {e}")
+            raise ValueError(
+                f"Markitdown conversion failed for {self.file_path}: File not found",
+            ) from exc
+        except Exception as exc:
+            metadata["error"] = str(exc)
+            raise ValueError(
+                f"Markitdown conversion failed for {self.file_path}: {exc}",
+            ) from exc
+
+    def _convert_to_markdown(self) -> Any:
+        """Convert the source file to markdown using MarkItDown."""
+        if self._converter is None:
+            from markitdown import MarkItDown
+
+            self._converter = MarkItDown()
+
+        return self._converter.convert(self.file_path)
+
+    def _file_metadata(self) -> Dict[str, Any]:
+        """Return base metadata for the current file."""
+        return {
+            "file_name": self._get_file_name(self.file_path),
+            "file_size": self._get_file_size(self.file_path),
+        }
+
+    def _extract_conversion_metadata(self, result: Any) -> Dict[str, Any]:
+        """Collect metadata surfaced by MarkItDown's conversion result."""
+        metadata: Dict[str, Any] = {}
+
+        markitdown_metadata = getattr(result, "metadata", None)
+        if isinstance(markitdown_metadata, dict) and markitdown_metadata:
+            metadata["markitdown_metadata"] = markitdown_metadata
+
+        pages = getattr(result, "pages", None)
+        if isinstance(pages, list):
+            metadata["page_count"] = len(pages)
+
+        attachments = getattr(result, "attachments", None)
+        if isinstance(attachments, list) and attachments:
+            metadata["attachment_count"] = len(attachments)
+
+        output_type = getattr(result, "output_type", None)
+        if output_type:
+            metadata["conversion_output_type"] = output_type
+
+        format_type = getattr(result, "format_type", None)
+        if format_type:
+            metadata["document_type"] = format_type
+
+        return metadata
+
+    def _get_text_content(self, result: Any) -> str:
+        """Normalize the text content returned by MarkItDown."""
+        content = getattr(result, "text_content", "") or ""
+        return content
 
     def _get_file_name(self, file_path: str) -> str:
         """Extract the file name from the file path."""

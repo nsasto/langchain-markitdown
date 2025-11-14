@@ -1,7 +1,6 @@
-from typing import List, Dict, Any, Optional
+from typing import TYPE_CHECKING, Dict, Any, List, Optional
 from langchain_core.documents import Document
 from ..base_loader import BaseMarkitdownLoader
-from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_core.language_models import BaseChatModel
 import re
 import os
@@ -9,10 +8,22 @@ import io
 import logging
 from ..utils import langchain_caption_adapter, get_image_format  # Import both at top
 
+if TYPE_CHECKING:
+    from markitdown import MarkItDown
+
 
 class PptxLoader(BaseMarkitdownLoader):
-    def __init__(self, file_path: str, split_by_page: bool = False, llm: Optional[BaseChatModel] = None, prompt: Optional[str] = None, verbose: Optional[bool] = None):
-        super().__init__(file_path, verbose=verbose)
+    def __init__(
+        self,
+        file_path: str,
+        split_by_page: bool = False,
+        llm: Optional[BaseChatModel] = None,
+        prompt: Optional[str] = None,
+        verbose: Optional[bool] = None,
+        *,
+        converter: Optional["MarkItDown"] = None,
+    ):
+        super().__init__(file_path, verbose=bool(verbose), converter=converter)
         self.split_by_page = split_by_page
         self.llm = llm
         self.prompt = prompt
@@ -26,7 +37,8 @@ class PptxLoader(BaseMarkitdownLoader):
             "source": self.file_path,
             "file_name": self._get_file_name(self.file_path),
             "file_size": self._get_file_size(self.file_path),
-            "conversion_success": True,
+            "success": False,
+            "conversion_success": False,
         }
 
         try:
@@ -122,24 +134,39 @@ class PptxLoader(BaseMarkitdownLoader):
         return documents if documents else [Document(page_content="", metadata=metadata)]
 
     def load(self, headers_to_split_on: Optional[List[str]] = None) -> List[Document]:
-        from markitdown import MarkItDown
-
         self.logger.info(f"Starting to load PPTX file: {self.file_path}")
         metadata = self._extract_metadata()
 
-        converter = MarkItDown()
-        self.logger.info("Converting PPTX to markdown")
-        result = converter.convert(self.file_path)
-        markdown_content = result.text_content
+        try:
+            self.logger.info("Converting PPTX to markdown")
+            result = self._convert_to_markdown()
+        except FileNotFoundError as exc:
+            metadata["error"] = "File not found."
+            raise ValueError(
+                f"Markitdown conversion failed for {self.file_path}: File not found",
+            ) from exc
+        except Exception as exc:
+            metadata["error"] = str(exc)
+            raise ValueError(
+                f"Failed to load and convert PPTX file: {exc}",
+            ) from exc
+
+        metadata["success"] = True
+        metadata["conversion_success"] = True
+        metadata.update(self._extract_conversion_metadata(result))
+        markdown_content = self._get_text_content(result)
 
         if self.llm:
             self.logger.info("Processing images and generating captions...")
             markdown_content = self._caption_images(markdown_content)
 
-        self.logger.info(f"Conversion complete, markdown content length: {len(markdown_content)} characters")
+        self.logger.info(
+            "Conversion complete, markdown content length: %s characters",
+            len(markdown_content),
+        )
 
         if not self.split_by_page:
             metadata["content_type"] = "presentation_full"
             return [Document(page_content=markdown_content, metadata=metadata)]
-        else:
-            return self._split_markdown_into_documents(markdown_content, metadata)
+
+        return self._split_markdown_into_documents(markdown_content, metadata)

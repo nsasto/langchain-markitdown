@@ -1,78 +1,151 @@
-from typing import List, Dict, Any
+from __future__ import annotations
+
+import re
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 from langchain_core.documents import Document
+
 from ..base_loader import BaseMarkitdownLoader
 
-class XlsxLoader(BaseMarkitdownLoader):
-    """Loader for XLSX files."""
+if TYPE_CHECKING:
+    from markitdown import MarkItDown
 
-    def __init__(self, file_path: str, split_by_page: bool = False):
-        """Initialize with file path and split_by_page option."""
-        super().__init__(file_path)
+
+class XlsxLoader(BaseMarkitdownLoader):
+    """Loader for XLSX files with optional sheet-level splitting."""
+
+    def __init__(
+        self,
+        file_path: str,
+        split_by_page: bool = False,
+        *,
+        verbose: bool = False,
+        converter: Optional["MarkItDown"] = None,
+    ):
+        super().__init__(file_path, verbose=verbose, converter=converter)
         self.split_by_page = split_by_page
 
     def load(self) -> List[Document]:
-        """Load and convert XLSX file to Markdown.
-        If split_by_page is True, each sheet is a separate document.
-        If split_by_page is False, all sheets are combined into a single document.
-        """
+        """Load and convert XLSX files, optionally splitting each worksheet."""
+        metadata: Dict[str, Any] = {
+            "source": self.file_path,
+            "success": False,
+            "conversion_success": False,
+        }
+
         try:
-            from markitdown import MarkItDown
-            converter = MarkItDown()
-            result = converter.convert(self.file_path)
-            markdown_content = result.text_content
-            
-            # Create basic metadata
-            metadata: Dict[str, Any] = {
-                "source": self.file_path,
-                "file_name": self._get_file_name(self.file_path),
-                "file_size": self._get_file_size(self.file_path),
-                "conversion_success": True,
-            }
-            
-            # Extract additional metadata directly from the XLSX file using openpyxl
-            try:
-                from openpyxl import load_workbook
-                workbook = load_workbook(self.file_path, read_only=True, data_only=True)
-                
-                # Extract document properties if available
-                props = workbook.properties
-                if hasattr(props, 'creator') and props.creator:
-                    metadata["author"] = props.creator
-                if hasattr(props, 'title') and props.title:
-                    metadata["title"] = props.title
-                if hasattr(props, 'subject') and props.subject:
-                    metadata["subject"] = props.subject
-                if hasattr(props, 'description') and props.description:
-                    metadata["description"] = props.description
-                if hasattr(props, 'keywords') and props.keywords:
-                    metadata["keywords"] = props.keywords
-                if hasattr(props, 'category') and props.category:
-                    metadata["category"] = props.category
-            except ImportError:
-                pass
-            
-            if self.split_by_page:
-                documents = []
-                # Split Markdown content by sheet headers
-                sheet_contents = markdown_content.split("## ")
-                for sheet_content in sheet_contents[1:]:
-                    lines = sheet_content.splitlines()
-                    sheet_name = lines[0].strip()  # First line is the sheet name
-                    table_content = '\n'.join(lines[1:])  # Remaining lines are the table
-                    
-                    page_metadata = metadata.copy()
-                    page_metadata["page_number"] = sheet_name
-                    doc = Document(page_content=table_content, metadata=page_metadata)
-                    documents.append(doc)
-                return documents
-            else:
+            metadata.update(self._file_metadata())
+            result = self._convert_to_markdown()
+            metadata["success"] = True
+            metadata["conversion_success"] = True
+            metadata.update(self._extract_conversion_metadata(result))
+            metadata.update(self._extract_workbook_metadata())
+
+            markdown_content = self._get_text_content(result)
+
+            if not self.split_by_page:
+                metadata["content_type"] = "workbook"
                 return [Document(page_content=markdown_content, metadata=metadata)]
-        except Exception as e:
-            # Handle conversion errors
-            metadata = {
-                "source": self.file_path,
-                "file_name": self._get_file_name(self.file_path),
-                "conversion_success": False,
-                "error": str(e),
-            }
-            return [Document(page_content="", metadata=metadata)]
+
+            documents = self._split_workbook(result, markdown_content, metadata)
+            return documents
+        except FileNotFoundError as exc:
+            metadata["error"] = "File not found."
+            raise ValueError(
+                f"Markitdown conversion failed for {self.file_path}: File not found",
+            ) from exc
+        except Exception as exc:
+            metadata["error"] = str(exc)
+            raise ValueError(
+                f"Failed to load and convert XLSX file: {exc}",
+            ) from exc
+
+    def _extract_workbook_metadata(self) -> Dict[str, Any]:
+        """Fetch workbook metadata using openpyxl when available."""
+        try:
+            from openpyxl import load_workbook
+        except ImportError:
+            return {"metadata_extraction_warning": "openpyxl not installed"}
+
+        try:
+            workbook = load_workbook(self.file_path, read_only=True, data_only=True)
+            props = workbook.properties
+        except Exception as exc:  # pragma: no cover - relies on openpyxl internals
+            return {"metadata_extraction_error": str(exc)}
+
+        metadata: Dict[str, Any] = {}
+        attr_map = {
+            "creator": "author",
+            "title": "title",
+            "subject": "subject",
+            "description": "description",
+            "keywords": "keywords",
+            "category": "category",
+        }
+        for attr, key in attr_map.items():
+            value = getattr(props, attr, None)
+            if value:
+                metadata[key] = value
+
+        return metadata
+
+    def _split_workbook(
+        self,
+        result: Any,
+        markdown_content: str,
+        metadata: Dict[str, Any],
+    ) -> List[Document]:
+        """Split workbook content either via MarkItDown pages or a fallback parser."""
+        pages = getattr(result, "pages", None)
+        documents: List[Document] = []
+
+        if isinstance(pages, list) and pages:
+            for index, page_content in enumerate(pages, start=1):
+                page_metadata = metadata.copy()
+                page_metadata["page_number"] = index
+                page_metadata["content_type"] = "worksheet"
+                documents.append(
+                    Document(page_content=page_content, metadata=page_metadata),
+                )
+            return documents
+
+        # Fallback: attempt to split by sheet headers in the markdown output.
+        pattern = re.compile(r"^##\s+(.+)$", re.MULTILINE)
+        splits = pattern.split(markdown_content)
+
+        if len(splits) <= 1:
+            fallback_metadata = metadata.copy()
+            fallback_metadata["content_type"] = "worksheet"
+            return [Document(page_content=markdown_content, metadata=fallback_metadata)]
+
+        # regex split returns alternating content/header pairs; rebuild them.
+        leading_content = splits[0].strip()
+        page_counter = 1
+        if leading_content:
+            documents.append(
+                Document(
+                    page_content=leading_content,
+                    metadata={
+                        **metadata,
+                        "content_type": "worksheet",
+                        "page_number": page_counter,
+                    },
+                ),
+            )
+            page_counter += 1
+
+        for idx in range(1, len(splits), 2):
+            sheet_name = splits[idx].strip()
+            sheet_body = splits[idx + 1].strip()
+
+            page_metadata = metadata.copy()
+            page_metadata["page_number"] = page_counter
+            page_metadata["worksheet"] = sheet_name
+            page_metadata["content_type"] = "worksheet"
+
+            documents.append(
+                Document(page_content=sheet_body, metadata=page_metadata),
+            )
+            page_counter += 1
+
+        return documents
