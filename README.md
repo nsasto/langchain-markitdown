@@ -39,7 +39,17 @@ Install the package using pip:
 pip install langchain-markitdown
 ```
 
-## Usage
+## Usage & Features
+
+The loaders expose a consistent interface that mirrors LangChain's built-in ones but leverage the MarkItDown converters under the hood. Highlights:
+
+- Centralized metadata handling: every loader emits `success`, `conversion_success`, `content_type`, and MarkItDown's native metadata (page count, attachments, output type, etc.).
+- Flexible splitting modes:
+  - `split_by_page=True` partitions per-page/worksheet/slide output when MarkItDown provides page data.
+  - `headers_to_split_on=[("#", "Header 1"), ...]` applies `MarkdownHeaderTextSplitter` to create logical sections from the converted Markdown.
+- Loader-specific metadata enrichment, e.g. DOCX core properties, XLSX workbook metadata via `openpyxl`, PPTX slide/image counts, and more.
+
+### Usage
 
 ### Specific Examples
 
@@ -47,10 +57,20 @@ pip install langchain-markitdown
 
 
 ```
-from langchain_markitdown import DocxLoader
+from langchain_markitdown import DocxLoader, PptxLoader, XlsxLoader
 
 loader = DocxLoader("path/to/your/document.docx")
 documents = loader.load()
+
+# Split by pages or headers when needed
+documents_by_page = DocxLoader(
+    "path/to/your/document.docx",
+    split_by_page=True,
+).load()
+
+documents_by_headers = loader.load(
+    headers_to_split_on=[("#", "H1"), ("##", "H2")],
+)
 ```
 
 #### PPTX
@@ -79,10 +99,26 @@ The `Document` objects returned by the loaders include the following metadata:
 - `source`: The path to the source file.
 - `file_name`: The name of the source file.
 - `file_size`: The size of the source file in bytes.
-- `conversion_success`: A boolean indicating whether the conversion to Markdown was successful.
-- `author`: The author of the document (if available in the document metadata).
-- `page_number`: The page number (if splitting by page).
-Header information: When splitting by headers, the metadata will also include the header levels and values for each split.
+- `success` / `conversion_success`: Boolean flags that include failure details when conversion fails.
+- `content_type`: Semantic tags such as `document_full`, `document_section`, `document_page`, `workbook`, `worksheet`, or `presentation_slide`.
+- `page_number` / `worksheet`: When splitting by page/worksheet.
+- `markitdown_metadata`: Raw metadata surfaced by MarkItDown (attachments, page counts, conversion format, etc.).
+- Loader-specific enrichments:
+  - DOCX: author/title/subject/keywords/category/revision timestamps.
+  - XLSX: workbook properties (author, title, subject, description, keywords, category).
+  - PPTX: slide counts plus counts for images, tables, charts, and text boxes.
+
+When header-based splitting is enabled, LangChain's header metadata is injected automatically.
+
+## Development & Testing
+
+Install dependencies (and the package itself in editable mode) before running tests:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install -e .
+pytest
+```
 
 ## Contributing
 
