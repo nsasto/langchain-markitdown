@@ -2,9 +2,8 @@
 
 [![Build](https://github.com/nsasto/langchain-markitdown/actions/workflows/publish.yml/badge.svg)](https://github.com/nsasto/langchain-markitdown/actions)
 [![License](https://img.shields.io/github/license/nsasto/langchain-markitdown)](https://github.com/nsasto/langchain-markitdown/blob/main/LICENSE)
-[![Last Commit](https://img.shields.io/github/last-commit/nsasto/langchain-markitdown)](https://github.com/nsasto/langchain-markitdown/commits)
+[![PyPI version](https://img.shields.io/pypi/v/langchain-markitdown)](https://pypi.org/project/langchain-markitdown/)
 [![Contributors](https://img.shields.io/github/contributors/nsasto/langchain-markitdown)](https://github.com/nsasto/langchain-markitdown/graphs/contributors)
-
 
 # Markitdown LangChain Integration
 
@@ -55,7 +54,6 @@ The loaders expose a consistent interface that mirrors LangChain's built-in ones
 
 #### DOCX
 
-
 ```
 from langchain_markitdown import DocxLoader, PptxLoader, XlsxLoader
 
@@ -83,7 +81,6 @@ documents = loader.load()
 ```
 
 #### XLSX
-
 
 ```
 from langchain_markitdown import XlsxLoader
